@@ -65,6 +65,28 @@
 #include "bgpd/rfapi/bgp_rfapi_cfg.h"
 #endif
 
+static int bgp_config_write_import_latency(struct vty *vty, struct bgp *bgp)
+{
+    if (bgp->import_latency_cfg.enabled) {
+        vty_out(vty, "  bgp import check-latency\n");
+        
+        /* Only write non-default values */
+        if (bgp->import_latency_cfg.probe_cycle_sec != 60)
+            vty_out(vty, "  bgp import check-latency probe-cycle %d\n",
+                    bgp->import_latency_cfg.probe_cycle_sec);
+        
+        if (bgp->import_latency_cfg.packet_count != 3)
+            vty_out(vty, "  bgp import check-latency packet-count %d\n",
+                    bgp->import_latency_cfg.packet_count);
+        
+        if (bgp->import_latency_cfg.damping_threshold != 50)
+            vty_out(vty, "  bgp import check-latency damping-threshold %u\n",
+                    bgp->import_latency_cfg.damping_threshold);
+    }
+    
+    return 0;
+}
+
 FRR_CFG_DEFAULT_BOOL(BGP_IMPORT_CHECK,
 	{
 		.val_bool = false,
@@ -2230,6 +2252,167 @@ DEFUN (no_bgp_maxmed_onstartup,
 
 	return CMD_SUCCESS;
 }
+
+//FOR BGP TWAMP-LIGHT PROJECT
+//Cli
+/* Main enable/disable */
+DEFUN(bgp_import_check_latency,
+      bgp_import_check_latency_cmd,
+      "bgp import check-latency",
+      BGP_STR
+      "Import configuration\n"
+      "Enable latency-based path selection for imported routes\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    
+    /* Only allow in IPv4 unicast */
+    if (vty->node != BGP_IPV4_NODE) {
+        vty_out(vty, "%% This command is only valid in IPv4 unicast address-family\n");
+        return CMD_WARNING_CONFIG_FAILED;
+    }
+    
+    bgp->import_latency_cfg.enabled = true;
+    return CMD_SUCCESS;
+}
+
+DEFUN(no_bgp_import_check_latency,
+      no_bgp_import_check_latency_cmd,
+      "no bgp import check-latency",
+      NO_STR
+      BGP_STR
+      "Import configuration\n"
+      "Disable latency-based path selection\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    
+    bgp->import_latency_cfg.enabled = false;
+    
+    /* Reset to defaults */
+    bgp->import_latency_cfg.probe_cycle_sec = 60;
+    bgp->import_latency_cfg.packet_count = 3;
+    bgp->import_latency_cfg.damping_threshold = 50;
+    
+    return CMD_SUCCESS;
+}
+
+/* Probe cycle */
+DEFUN(bgp_import_check_latency_probe_cycle,
+      bgp_import_check_latency_probe_cycle_cmd,
+      "bgp import check-latency probe-cycle (10-300)",
+      BGP_STR
+      "Import configuration\n"
+      "Latency-based path selection\n"
+      "Probe cycle interval (default: 60 seconds)\n"
+      "Interval in seconds\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    int idx = 0;
+    
+    if (vty->node != BGP_IPV4_NODE) {
+        vty_out(vty, "%% This command is only valid in IPv4 unicast address-family\n");
+        return CMD_WARNING_CONFIG_FAILED;
+    }
+    
+    argv_find(argv, argc, "(10-300)", &idx);
+    bgp->import_latency_cfg.probe_cycle_sec = strtol(argv[idx]->arg, NULL, 10);
+    
+    return CMD_SUCCESS;
+}
+
+DEFUN(no_bgp_import_check_latency_probe_cycle,
+      no_bgp_import_check_latency_probe_cycle_cmd,
+      "no bgp import check-latency probe-cycle [(10-300)]",
+      NO_STR
+      BGP_STR
+      "Import configuration\n"
+      "Latency-based path selection\n"
+      "Probe cycle interval\n"
+      "Interval in seconds\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    bgp->import_latency_cfg.probe_cycle_sec = 60;
+    return CMD_SUCCESS;
+}
+
+/* Packet count */
+DEFUN(bgp_import_check_latency_packet_count,
+      bgp_import_check_latency_packet_count_cmd,
+      "bgp import check-latency packet-count (1-10)",
+      BGP_STR
+      "Import configuration\n"
+      "Latency-based path selection\n"
+      "Number of probe packets per cycle (default: 3)\n"
+      "Packet count\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    int idx = 0;
+    
+    if (vty->node != BGP_IPV4_NODE) {
+        vty_out(vty, "%% This command is only valid in IPv4 unicast address-family\n");
+        return CMD_WARNING_CONFIG_FAILED;
+    }
+    
+    argv_find(argv, argc, "(1-10)", &idx);
+    bgp->import_latency_cfg.packet_count = strtol(argv[idx]->arg, NULL, 10);
+    
+    return CMD_SUCCESS;
+}
+
+DEFUN(no_bgp_import_check_latency_packet_count,
+      no_bgp_import_check_latency_packet_count_cmd,
+      "no bgp import check-latency packet-count [(1-10)]",
+      NO_STR
+      BGP_STR
+      "Import configuration\n"
+      "Latency-based path selection\n"
+      "Packet count\n"
+      "Packet count\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    bgp->import_latency_cfg.packet_count = 3;
+    return CMD_SUCCESS;
+}
+
+/* Damping threshold */
+DEFUN(bgp_import_check_latency_damping_threshold,
+      bgp_import_check_latency_damping_threshold_cmd,
+      "bgp import check-latency damping-threshold (0-1000)",
+      BGP_STR
+      "Import configuration\n"
+      "Latency-based path selection\n"
+      "Minimum latency change in milliseconds (default: 50ms)\n"
+      "Threshold in milliseconds\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    int idx = 0;
+    
+    if (vty->node != BGP_IPV4_NODE) {
+        vty_out(vty, "%% This command is only valid in IPv4 unicast address-family\n");
+        return CMD_WARNING_CONFIG_FAILED;
+    }
+    
+    argv_find(argv, argc, "(0-1000)", &idx);
+    bgp->import_latency_cfg.damping_threshold = strtoul(argv[idx]->arg, NULL, 10);
+    
+    return CMD_SUCCESS;
+}
+
+DEFUN(no_bgp_import_check_latency_damping_threshold,
+      no_bgp_import_check_latency_damping_threshold_cmd,
+      "no bgp import check-latency damping-threshold [(0-1000)]",
+      NO_STR
+      BGP_STR
+      "Import configuration\n"
+      "Latency-based path selection\n"
+      "Damping threshold\n"
+      "Threshold in milliseconds\n")
+{
+    VTY_DECLVAR_CONTEXT(bgp, bgp);
+    bgp->import_latency_cfg.damping_threshold = 50;
+    return CMD_SUCCESS;
+}
+
+
 
 static int bgp_global_update_delay_config_vty(struct vty *vty,
 					      uint16_t update_delay,
@@ -18429,6 +18612,9 @@ static void bgp_config_write_family(struct vty *vty, struct bgp *bgp, afi_t afi,
 
 			vty_out(vty, "  import vpn\n");
 		}
+
+		bgp_config_write_import_latency(vty, bgp);
+
 		if (CHECK_FLAG(bgp->af_flags[afi][safi],
 			       BGP_CONFIG_VRF_TO_VRF_IMPORT)) {
 			char *name;
@@ -20899,6 +21085,16 @@ void bgp_vty_init(void)
 	install_element(BGP_NODE, &bgp_sid_vpn_export_cmd);
 	install_element(BGP_NODE, &no_bgp_sid_vpn_export_cmd);
 
+	//FOR BGP TWAMP-LIGHT PROJECT
+	//Cli
+	install_element(BGP_IPV4_NODE, &bgp_import_check_latency_cmd);
+	install_element(BGP_IPV4_NODE, &no_bgp_import_check_latency_cmd);
+	install_element(BGP_IPV4_NODE, &bgp_import_check_latency_probe_cycle_cmd);
+	install_element(BGP_IPV4_NODE, &no_bgp_import_check_latency_probe_cycle_cmd);
+	install_element(BGP_IPV4_NODE, &bgp_import_check_latency_packet_count_cmd);
+	install_element(BGP_IPV4_NODE, &no_bgp_import_check_latency_packet_count_cmd);
+	install_element(BGP_IPV4_NODE, &bgp_import_check_latency_damping_threshold_cmd);
+	install_element(BGP_IPV4_NODE, &no_bgp_import_check_latency_damping_threshold_cmd);
 	bgp_vty_if_init();
 }
 

@@ -7,13 +7,19 @@
 #include <unordered_map>
 #include <chrono>
 #include <random>
-#include <thread>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <thread>
+#include <mutex>
+#include <vector>
+#include <atomic>
+#include <condition_variable>
+#include <cstdint>
+
 
 #if (defined(__APPLE__))
     #include <libkern/OSByteOrder.h>

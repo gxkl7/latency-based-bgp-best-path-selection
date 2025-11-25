@@ -142,6 +142,18 @@ void bgp_session_reset(struct peer *peer)
 	BGP_EVENT_ADD(peer->connection, BGP_Stop);
 }
 
+//FOR BGP TWAMP-LIGHT PROJECT
+static void bgp_import_latency_config_init(struct bgp *bgp)
+{
+    bgp->import_latency_cfg.enabled = false;
+    bgp->import_latency_cfg.damping_threshold = 50;
+    bgp->import_latency_cfg.packet_count = 3;
+    bgp->import_latency_cfg.interval_ms = 10;
+    bgp->import_latency_cfg.timeout_ms = 100;
+    bgp->import_latency_cfg.probe_cycle_sec = 60;
+    bgp->import_latency_cfg.port = 862;
+}
+
 /*
  * During session reset, we may delete the doppelganger peer, which would
  * be the next node to the current node. If the session reset was invoked
@@ -3513,8 +3525,12 @@ static struct bgp *bgp_create(as_t *as, const char *name,
 	memset(&bgp->ebgprequirespolicywarning, 0,
 	       sizeof(bgp->ebgprequirespolicywarning));
 
+	//For BGP TWAMP-LIGHT PROJECT
+	bgp_import_latency_config_init(bgp);
 	return bgp;
 }
+
+
 
 /* Return the "default VRF" instance of BGP. */
 struct bgp *bgp_get_default(void)

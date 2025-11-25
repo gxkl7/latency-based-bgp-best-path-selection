@@ -340,6 +340,17 @@ struct as_confed {
 struct bgp_mplsvpn_nh_label_bind_cache;
 PREDECL_RBTREE_UNIQ(bgp_mplsvpn_nh_label_bind_cache);
 
+//FOR BGP TWAMP-LIGHT PROJECT
+struct bgp_import_latency_config {
+    bool enabled;
+    uint32_t damping_threshold;
+    int packet_count;
+    int interval_ms;
+    int timeout_ms;
+    int probe_cycle_sec;
+    int port;
+};
+
 /* BGP instance structure.  */
 struct bgp {
 	/* AS number of this BGP instance.  */
@@ -821,6 +832,10 @@ struct bgp {
 	enum asnotation_mode asnotation;
 
 	QOBJ_FIELDS;
+
+//FOR BGP TWAMP-LIGHT PROJECT
+struct bgp_import_latency_config import_latency_cfg; 
+
 };
 DECLARE_QOBJ_TYPE(bgp);
 
