@@ -78,6 +78,7 @@
 #include "bgpd/bgp_evpn_mh.h"
 #include "bgpd/bgp_mac.h"
 #include "bgp_trace.h"
+#include "bgp_twamp.h"
 
 DEFINE_MTYPE_STATIC(BGPD, PEER_TX_SHUTDOWN_MSG, "Peer shutdown message (TX)");
 DEFINE_QOBJ_TYPE(bgp_master);
@@ -3527,6 +3528,7 @@ static struct bgp *bgp_create(as_t *as, const char *name,
 
 	//For BGP TWAMP-LIGHT PROJECT
 	bgp_import_latency_config_init(bgp);
+	bgp_twamp_init(bgp);
 	return bgp;
 }
 

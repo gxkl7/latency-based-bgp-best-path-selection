@@ -24,6 +24,7 @@
 #include "bgpd/bgp_attr.h"
 #include "bgpd/bgp_label.h"
 #include "bgpd/bgp_mplsvpn.h"
+#include "bgpd/bgp_twamp.h"
 #include "bgpd/bgp_packet.h"
 #include "bgpd/bgp_vty.h"
 #include "bgpd/bgp_vpn.h"
@@ -292,7 +293,7 @@ void vpn_leak_zebra_vrf_label_update(struct bgp *bgp, afi_t afi)
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_LABEL);
 
 	if (bgp->vrf_id == VRF_UNKNOWN) {
-		if (debug) {
+		if (1) {
 			zlog_debug(
 				"%s: vrf %s: afi %s: vrf_id not set, can't set zebra vrf label",
 				__func__, bgp->name_pretty, afi2str(afi));
@@ -304,7 +305,7 @@ void vpn_leak_zebra_vrf_label_update(struct bgp *bgp, afi_t afi)
 		label = bgp->vpn_policy[afi].tovpn_label;
 	}
 
-	if (debug) {
+	if (1) {
 		zlog_debug("%s: vrf %s: afi %s: setting label %d for vrf id %d",
 			   __func__, bgp->name_pretty, afi2str(afi), label,
 			   bgp->vrf_id);
@@ -326,7 +327,7 @@ void vpn_leak_zebra_vrf_label_withdraw(struct bgp *bgp, afi_t afi)
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_LABEL);
 
 	if (bgp->vrf_id == VRF_UNKNOWN) {
-		if (debug) {
+		if (1) {
 			zlog_debug(
 				"%s: vrf_id not set, can't delete zebra vrf label",
 				__func__);
@@ -334,7 +335,7 @@ void vpn_leak_zebra_vrf_label_withdraw(struct bgp *bgp, afi_t afi)
 		return;
 	}
 
-	if (debug) {
+	if (1) {
 		zlog_debug("%s: deleting label for vrf %s (id=%d)", __func__,
 			   bgp->name_pretty, bgp->vrf_id);
 	}
@@ -358,7 +359,7 @@ void vpn_leak_zebra_vrf_sid_update_per_af(struct bgp *bgp, afi_t afi)
 	struct vrf *vrf;
 
 	if (bgp->vrf_id == VRF_UNKNOWN) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: vrf %s: afi %s: vrf_id not set, can't set zebra vrf label",
 				   __func__, bgp->name_pretty, afi2str(afi));
 		return;
@@ -366,13 +367,13 @@ void vpn_leak_zebra_vrf_sid_update_per_af(struct bgp *bgp, afi_t afi)
 
 	tovpn_sid = bgp->vpn_policy[afi].tovpn_sid;
 	if (!tovpn_sid) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: vrf %s: afi %s: sid not set", __func__,
 				   bgp->name_pretty, afi2str(afi));
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: vrf %s: afi %s: setting sid %pI6 for vrf id %d",
 			   __func__, bgp->name_pretty, afi2str(afi), tovpn_sid,
 			   bgp->vrf_id);
@@ -415,7 +416,7 @@ void vpn_leak_zebra_vrf_sid_update_per_vrf(struct bgp *bgp)
 	struct vrf *vrf;
 
 	if (bgp->vrf_id == VRF_UNKNOWN) {
-		if (debug)
+		if (1)
 			zlog_debug(
 				"%s: vrf %s: vrf_id not set, can't set zebra vrf label",
 				__func__, bgp->name_pretty);
@@ -424,13 +425,13 @@ void vpn_leak_zebra_vrf_sid_update_per_vrf(struct bgp *bgp)
 
 	tovpn_sid = bgp->tovpn_sid;
 	if (!tovpn_sid) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: vrf %s: sid not set", __func__,
 				   bgp->name_pretty);
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: vrf %s: setting sid %pI6 for vrf id %d",
 			   __func__, bgp->name_pretty, tovpn_sid, bgp->vrf_id);
 
@@ -470,7 +471,7 @@ void vpn_leak_zebra_vrf_sid_update(struct bgp *bgp, afi_t afi)
 	if (bgp->tovpn_sid)
 		return vpn_leak_zebra_vrf_sid_update_per_vrf(bgp);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: vrf %s: afi %s: sid not set", __func__,
 			   bgp->name_pretty, afi2str(afi));
 }
@@ -485,13 +486,13 @@ void vpn_leak_zebra_vrf_sid_withdraw_per_af(struct bgp *bgp, afi_t afi)
 	struct seg6local_context seg6localctx = {};
 
 	if (bgp->vrf_id == VRF_UNKNOWN) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: vrf %s: afi %s: vrf_id not set, can't set zebra vrf label",
 				   __func__, bgp->name_pretty, afi2str(afi));
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: deleting sid for vrf %s afi (id=%d)", __func__,
 			   bgp->name_pretty, bgp->vrf_id);
 
@@ -520,14 +521,14 @@ void vpn_leak_zebra_vrf_sid_withdraw_per_vrf(struct bgp *bgp)
 	struct seg6local_context seg6localctx = {};
 
 	if (bgp->vrf_id == VRF_UNKNOWN) {
-		if (debug)
+		if (1)
 			zlog_debug(
 				"%s: vrf %s: vrf_id not set, can't set zebra vrf label",
 				__func__, bgp->name_pretty);
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: deleting sid for vrf %s (id=%d)", __func__,
 			   bgp->name_pretty, bgp->vrf_id);
 
@@ -564,7 +565,7 @@ int vpn_leak_label_callback(
 	struct vpn_policy *vp = (struct vpn_policy *)labelid;
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_LABEL);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: label=%u, allocated=%d",
 			__func__, label, allocated);
 
@@ -684,7 +685,7 @@ static uint32_t alloc_new_sid(struct bgp *bgp, uint32_t index,
 	for (ALL_LIST_ELEMENTS_RO(bgp->srv6_locator_chunks, node, chunk)) {
 		if (chunk->function_bits_length >
 		    BGP_PREFIX_SID_SRV6_MAX_FUNCTION_LENGTH) {
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: invalid SRv6 Locator chunk (%pFX): Function Length must be less or equal to %d",
 					__func__, &chunk->prefix,
@@ -695,7 +696,7 @@ static uint32_t alloc_new_sid(struct bgp *bgp, uint32_t index,
 		index_max = (1 << chunk->function_bits_length) - 1;
 
 		if (index > index_max) {
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: skipped SRv6 Locator chunk (%pFX): Function Length is too short to support specified index (%u)",
 					__func__, &chunk->prefix, index);
@@ -711,7 +712,7 @@ static uint32_t alloc_new_sid(struct bgp *bgp, uint32_t index,
 		if (index != 0) {
 			label = index << shift_len;
 			if (label < MPLS_LABEL_UNRESERVED_MIN) {
-				if (debug)
+				if (1)
 					zlog_debug(
 						"%s: skipped to allocate SRv6 SID (%pFX): Label (%u) is too small to use",
 						__func__, &chunk->prefix,
@@ -729,7 +730,7 @@ static uint32_t alloc_new_sid(struct bgp *bgp, uint32_t index,
 		for (uint32_t i = 1; i < index_max; i++) {
 			label = i << shift_len;
 			if (label < MPLS_LABEL_UNRESERVED_MIN) {
-				if (debug)
+				if (1)
 					zlog_debug(
 						"%s: skipped to allocate SRv6 SID (%pFX): Label (%u) is too small to use",
 						__func__, &chunk->prefix,
@@ -760,7 +761,7 @@ void ensure_vrf_tovpn_sid_per_af(struct bgp *bgp_vpn, struct bgp *bgp_vrf,
 	uint32_t tovpn_sid_index = 0, tovpn_sid_transpose_label;
 	bool tovpn_sid_auto = false;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: try to allocate new SID for vrf %s: afi %s",
 			   __func__, bgp_vrf->name_pretty, afi2str(afi));
 
@@ -797,7 +798,7 @@ void ensure_vrf_tovpn_sid_per_af(struct bgp *bgp_vpn, struct bgp *bgp_vrf,
 						  tovpn_sid_locator, tovpn_sid);
 
 	if (tovpn_sid_transpose_label == 0) {
-		if (debug)
+		if (1)
 			zlog_debug(
 				"%s: not allocated new sid for vrf %s: afi %s",
 				__func__, bgp_vrf->name_pretty, afi2str(afi));
@@ -806,7 +807,7 @@ void ensure_vrf_tovpn_sid_per_af(struct bgp *bgp_vpn, struct bgp *bgp_vrf,
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: new sid %pI6 allocated for vrf %s: afi %s",
 			   __func__, tovpn_sid, bgp_vrf->name_pretty,
 			   afi2str(afi));
@@ -825,7 +826,7 @@ void ensure_vrf_tovpn_sid_per_vrf(struct bgp *bgp_vpn, struct bgp *bgp_vrf)
 	uint32_t tovpn_sid_index = 0, tovpn_sid_transpose_label;
 	bool tovpn_sid_auto = false;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: try to allocate new SID for vrf %s", __func__,
 			   bgp_vrf->name_pretty);
 
@@ -861,7 +862,7 @@ void ensure_vrf_tovpn_sid_per_vrf(struct bgp *bgp_vpn, struct bgp *bgp_vrf)
 						  tovpn_sid_locator, tovpn_sid);
 
 	if (tovpn_sid_transpose_label == 0) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: not allocated new sid for vrf %s",
 				   __func__, bgp_vrf->name_pretty);
 		srv6_locator_chunk_free(&tovpn_sid_locator);
@@ -869,7 +870,7 @@ void ensure_vrf_tovpn_sid_per_vrf(struct bgp *bgp_vpn, struct bgp *bgp_vrf)
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: new sid %pI6 allocated for vrf %s", __func__,
 			   tovpn_sid, bgp_vrf->name_pretty);
 
@@ -899,7 +900,7 @@ void delete_vrf_tovpn_sid_per_af(struct bgp *bgp_vpn, struct bgp *bgp_vrf,
 	uint32_t tovpn_sid_index = 0;
 	bool tovpn_sid_auto = false;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: try to remove SID for vrf %s: afi %s", __func__,
 			   bgp_vrf->name_pretty, afi2str(afi));
 
@@ -926,7 +927,7 @@ void delete_vrf_tovpn_sid_per_vrf(struct bgp *bgp_vpn, struct bgp *bgp_vrf)
 	uint32_t tovpn_sid_index = 0;
 	bool tovpn_sid_auto = false;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: try to remove SID for vrf %s", __func__,
 			   bgp_vrf->name_pretty);
 
@@ -1092,7 +1093,7 @@ static bool leak_update_nexthop_valid(struct bgp *to_bgp, struct bgp_dest *bn,
 		nh_valid = false;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: %pFX nexthop is %svalid (in %s)", __func__, p,
 			   (nh_valid ? "" : "not "), bgp_nexthop->name_pretty);
 
@@ -1115,7 +1116,7 @@ leak_update(struct bgp *to_bgp, struct bgp_dest *bn,
 	struct bgp_path_info_extra *extra;
 	struct bgp_path_info *parent = source_bpi;
 
-	if (debug)
+	if (1)
 		zlog_debug(
 			"%s: entry: leak-to=%s, p=%pBD, type=%d, sub_type=%d",
 			__func__, to_bgp->name_pretty, bn, source_bpi->type,
@@ -1153,7 +1154,7 @@ leak_update(struct bgp *to_bgp, struct bgp_dest *bn,
 
 		if (CHECK_FLAG(source_bpi->flags, BGP_PATH_REMOVED)
 		    && CHECK_FLAG(bpi->flags, BGP_PATH_REMOVED)) {
-			if (debug) {
+			if (1) {
 				zlog_debug(
 					"%s: ->%s(s_flags: 0x%x b_flags: 0x%x): %pFX: Found route, being removed, not leaking",
 					__func__, to_bgp->name_pretty,
@@ -1166,7 +1167,7 @@ leak_update(struct bgp *to_bgp, struct bgp_dest *bn,
 		    && !CHECK_FLAG(bpi->flags, BGP_PATH_REMOVED)) {
 
 			bgp_attr_unintern(&new_attr);
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: ->%s: %pBD: Found route, no change",
 					__func__, to_bgp->name_pretty, bn);
@@ -1230,7 +1231,7 @@ leak_update(struct bgp *to_bgp, struct bgp_dest *bn,
 		bgp_aggregate_increment(to_bgp, p, bpi, afi, safi);
 		bgp_process(to_bgp, bn, afi, safi);
 
-		if (debug)
+		if (1)
 			zlog_debug("%s: ->%s: %pBD Found route, changed attr",
 				   __func__, to_bgp->name_pretty, bn);
 
@@ -1240,7 +1241,7 @@ leak_update(struct bgp *to_bgp, struct bgp_dest *bn,
 	}
 
 	if (CHECK_FLAG(source_bpi->flags, BGP_PATH_REMOVED)) {
-		if (debug) {
+		if (1) {
 			zlog_debug(
 				"%s: ->%s(s_flags: 0x%x): %pFX: New route, being removed, not leaking",
 				__func__, to_bgp->name_pretty,
@@ -1291,7 +1292,7 @@ leak_update(struct bgp *to_bgp, struct bgp_dest *bn,
 
 	bgp_process(to_bgp, bn, afi, safi);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: ->%s: %pBD: Added new route", __func__,
 			   to_bgp->name_pretty, bn);
 
@@ -1338,7 +1339,7 @@ static int bgp_mplsvpn_get_label_per_nexthop_cb(mpls_label_t label,
 
 	old_label = blnc->label;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: label=%u, allocated=%d, nexthop=%pFX", __func__,
 			   label, allocated, &blnc->nexthop);
 	if (allocated)
@@ -1583,7 +1584,7 @@ void vpn_leak_from_vrf_update(struct bgp *to_bgp,	     /* to */
 	const char *debugmsg;
 	int nexthop_self_flag = 0;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: from vrf %s", __func__, from_bgp->name_pretty);
 
 	if (debug && bgp_attr_get_ecommunity(path_vrf->attr)) {
@@ -1600,7 +1601,7 @@ void vpn_leak_from_vrf_update(struct bgp *to_bgp,	     /* to */
 		return;
 
 	if (!afi) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: can't get afi of prefix", __func__);
 		return;
 	}
@@ -1610,7 +1611,7 @@ void vpn_leak_from_vrf_update(struct bgp *to_bgp,	     /* to */
 		return;
 
 	if (!vpn_leak_to_vpn_active(from_bgp, afi, &debugmsg)) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: %s skipping: %s", __func__,
 				   from_bgp->name, debugmsg);
 		return;
@@ -1634,7 +1635,7 @@ void vpn_leak_from_vrf_update(struct bgp *to_bgp,	     /* to */
 				      p, &info);
 		if (RMAP_DENYMATCH == ret) {
 			bgp_attr_flush(&static_attr); /* free any added parts */
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: vrf %s route map \"%s\" says DENY, returning",
 					__func__, from_bgp->name_pretty,
@@ -1774,7 +1775,7 @@ void vpn_leak_from_vrf_update(struct bgp *to_bgp,	     /* to */
 		 * when the 'bgp_mplsvpn_get_label_per_nexthop_cb' callback gets
 		 * a valid label value, it will call the current function again.
 		 */
-		if (debug)
+		if (1)
 			zlog_debug(
 				"%s: %s skipping: waiting for a valid per-label nexthop.",
 				__func__, from_bgp->name_pretty);
@@ -1914,7 +1915,7 @@ void vpn_leak_from_vrf_withdraw(struct bgp *to_bgp,		/* to */
 	struct bgp_dest *bn;
 	const char *debugmsg;
 
-	if (debug) {
+	if (1) {
 		zlog_debug(
 			"%s: entry: leak-from=%s, p=%pBD, type=%d, sub_type=%d",
 			__func__, from_bgp->name_pretty, path_vrf->net,
@@ -1925,7 +1926,7 @@ void vpn_leak_from_vrf_withdraw(struct bgp *to_bgp,		/* to */
 		return;
 
 	if (!afi) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: can't get afi of prefix", __func__);
 		return;
 	}
@@ -1935,12 +1936,12 @@ void vpn_leak_from_vrf_withdraw(struct bgp *to_bgp,		/* to */
 		return;
 
 	if (!vpn_leak_to_vpn_active(from_bgp, afi, &debugmsg)) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: skipping: %s", __func__, debugmsg);
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: withdrawing (path_vrf=%p)", __func__, path_vrf);
 
 	bn = bgp_afi_node_get(to_bgp->rib[afi][safi], afi, safi, p,
@@ -2001,7 +2002,7 @@ void vpn_leak_from_vrf_withdraw_all(struct bgp *to_bgp, struct bgp *from_bgp,
 			}
 
 			for (; bpi; bpi = bpi->next) {
-				if (debug)
+				if (1)
 					zlog_debug("%s: type %d, sub_type %d",
 						   __func__, bpi->type,
 						   bpi->sub_type);
@@ -2012,7 +2013,7 @@ void vpn_leak_from_vrf_withdraw_all(struct bgp *to_bgp, struct bgp *from_bgp,
 				if ((struct bgp *)bpi->extra->vrfleak->bgp_orig ==
 				    from_bgp) {
 					/* delete route */
-					if (debug)
+					if (1)
 						zlog_debug("%s: deleting it",
 							   __func__);
 					/* withdraw from leak-to vrfs as well */
@@ -2037,19 +2038,19 @@ void vpn_leak_from_vrf_update_all(struct bgp *to_bgp, struct bgp *from_bgp,
 	struct bgp_path_info *bpi;
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_FROM_VRF);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: entry, afi=%d, vrf=%s", __func__, afi,
 			   from_bgp->name_pretty);
 
 	for (bn = bgp_table_top(from_bgp->rib[afi][SAFI_UNICAST]); bn;
 	     bn = bgp_route_next(bn)) {
 
-		if (debug)
+		if (1)
 			zlog_debug("%s: node=%p", __func__, bn);
 
 		for (bpi = bgp_dest_get_bgp_path_info(bn); bpi;
 		     bpi = bpi->next) {
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: calling vpn_leak_from_vrf_update",
 					__func__);
@@ -2113,7 +2114,7 @@ static void vpn_leak_to_vrf_update_onevrf(struct bgp *to_bgp,   /* to */
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_TO_VRF);
 
 	if (!vpn_leak_from_vpn_active(to_bgp, afi, &debugmsg)) {
-		if (debug)
+		if (1)
 			zlog_debug(
 				"%s: from vpn (%s) to vrf (%s), skipping: %s",
 				__func__, from_bgp->name_pretty,
@@ -2142,7 +2143,7 @@ static void vpn_leak_to_vrf_update_onevrf(struct bgp *to_bgp,   /* to */
 	if (!ecommunity_include(
 		    to_bgp->vpn_policy[afi].rtlist[BGP_VPN_POLICY_DIR_FROMVPN],
 		    bgp_attr_get_ecommunity(path_vpn->attr))) {
-		if (debug)
+		if (1)
 			zlog_debug(
 				"from vpn (%s) to vrf (%s), skipping after no intersection of route targets",
 				from_bgp->name_pretty, to_bgp->name_pretty);
@@ -2159,14 +2160,14 @@ static void vpn_leak_to_vrf_update_onevrf(struct bgp *to_bgp,   /* to */
 	if (CHECK_FLAG(path_vpn->flags, BGP_PATH_ACCEPT_OWN) && prd &&
 	    memcmp(&prd->val, &to_bgp->vpn_policy[afi].tovpn_rd.val,
 		   ECOMMUNITY_SIZE) == 0) {
-		if (debug)
+		if (1)
 			zlog_debug(
 				"%s: skipping import, match RD (%s) of src VRF (%s) and the prefix (%pFX)",
 				__func__, rd_buf, to_bgp->name_pretty, p);
 		return;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: updating RD %s, %pFX to %s", __func__, rd_buf,
 			   p, to_bgp->name_pretty);
 
@@ -2267,7 +2268,7 @@ static void vpn_leak_to_vrf_update_onevrf(struct bgp *to_bgp,   /* to */
 				      p, &info);
 		if (RMAP_DENYMATCH == ret) {
 			bgp_attr_flush(&static_attr); /* free any added parts */
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: vrf %s vpn-policy route map \"%s\" says DENY, returning",
 					__func__, to_bgp->name_pretty,
@@ -2284,6 +2285,40 @@ static void vpn_leak_to_vrf_update_onevrf(struct bgp *to_bgp,   /* to */
 			nexthop_self_flag = 0;
 	}
 
+
+	/* TWAMP: Set weight based on latency measurements */
+		fprintf(stderr, "*** TWAMP WEIGHT: Checking latency for import, enabled=%d\n", to_bgp->import_latency_cfg.enabled); fflush(stderr);
+	if (to_bgp->import_latency_cfg.enabled && path_vpn->peer && 
+	    path_vpn->peer->sort == BGP_PEER_IBGP) {
+		fprintf(stderr, "*** TWAMP WEIGHT: path_vpn->peer=%p, sort=%d\n", (void*)path_vpn->peer, path_vpn->peer->sort); fflush(stderr);
+		struct bgp_path_info *path_ultimate = bgp_get_imported_bpi_ultimate(path_vpn);
+		fprintf(stderr, "*** TWAMP WEIGHT: path_ultimate=%p, path_ultimate->peer=%p\n", (void*)path_ultimate, path_ultimate ? (void*)path_ultimate->peer : NULL); fflush(stderr);
+		if (path_ultimate->peer && path_ultimate->peer->connection && 
+		    path_ultimate->peer->connection->su.sa.sa_family == AF_INET) {
+			fprintf(stderr, "*** TWAMP WEIGHT: Inside AF_INET check, getting peer IP\n"); fflush(stderr);
+			struct in_addr peer_ip;
+			peer_ip.s_addr = path_ultimate->peer->connection->su.sin.sin_addr.s_addr;
+			char ip_str[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &peer_ip, ip_str, sizeof(ip_str));
+			fprintf(stderr, "*** TWAMP WEIGHT: Calling bgp_twamp_get_latency for %s\n", ip_str); fflush(stderr);
+			uint32_t latency = bgp_twamp_get_latency(&peer_ip);
+			fprintf(stderr, "*** TWAMP WEIGHT: Got latency=%u (UINT32_MAX=%u)\n", latency, UINT32_MAX); fflush(stderr);
+			
+			if (latency != UINT32_MAX) {
+				/* Set weight based on latency */
+				if (latency <= to_bgp->import_latency_cfg.damping_threshold) {
+					/* Low latency - set high weight */
+					static_attr.weight = 32768;
+					fprintf(stderr, "TWAMP: Setting weight=32768 for low latency (%ums <= %ums threshold)\n", latency, to_bgp->import_latency_cfg.damping_threshold); fflush(stderr);
+				} else {
+					/* High latency - set low weight */
+					static_attr.weight = 0;
+					fprintf(stderr, "TWAMP: Setting weight=0 for high latency (%ums > %ums threshold)\n", latency, to_bgp->import_latency_cfg.damping_threshold); fflush(stderr);
+				}
+			} else {
+				fprintf(stderr, "TWAMP: Peer latency not measured, using default weight\n"); fflush(stderr);
+                }
+        }
 	new_attr = bgp_attr_intern(&static_attr);
 	bgp_attr_flush(&static_attr);
 
@@ -2328,7 +2363,7 @@ static void vpn_leak_to_vrf_update_onevrf(struct bgp *to_bgp,   /* to */
 		}
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: pfx %pBD: num_labels %d", __func__,
 			   path_vpn->net, num_labels);
 
@@ -2336,6 +2371,7 @@ static void vpn_leak_to_vrf_update_onevrf(struct bgp *to_bgp,   /* to */
 			 num_labels, src_vrf, &nexthop_orig, nexthop_self_flag,
 			 debug))
 		bgp_dest_unlock_node(bn);
+}
 }
 
 bool vpn_leak_to_vrf_no_retain_filter_check(struct bgp *from_bgp,
@@ -2350,7 +2386,7 @@ bool vpn_leak_to_vrf_no_retain_filter_check(struct bgp *from_bgp,
 	/* Loop over BGP instances */
 	for (ALL_LIST_ELEMENTS_RO(bm->bgp, node, to_bgp)) {
 		if (!vpn_leak_from_vpn_active(to_bgp, afi, &debugmsg)) {
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: from vpn (%s) to vrf (%s) afi %s, skipping: %s",
 					__func__, from_bgp->name_pretty,
@@ -2364,7 +2400,7 @@ bool vpn_leak_to_vrf_no_retain_filter_check(struct bgp *from_bgp,
 			    to_bgp->vpn_policy[afi]
 				    .rtlist[BGP_VPN_POLICY_DIR_FROMVPN],
 			    ecom_route_target)) {
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: from vpn (%s) to vrf (%s) afi %s %s, skipping after no intersection of route targets",
 					__func__, from_bgp->name_pretty,
@@ -2375,7 +2411,7 @@ bool vpn_leak_to_vrf_no_retain_filter_check(struct bgp *from_bgp,
 		return false;
 	}
 
-	if (debug)
+	if (1)
 		zlog_debug(
 			"%s: from vpn (%s) afi %s %s, no import - must be filtered",
 			__func__, from_bgp->name_pretty, afi2str(afi),
@@ -2393,7 +2429,7 @@ void vpn_leak_to_vrf_update(struct bgp *from_bgp,
 
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_TO_VRF);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: start (path_vpn=%p)", __func__, path_vpn);
 
 	/* Loop over VRFs */
@@ -2419,11 +2455,11 @@ void vpn_leak_to_vrf_withdraw(struct bgp_path_info *path_vpn)
 
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_TO_VRF);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: entry: p=%pBD, type=%d, sub_type=%d", __func__,
 			   path_vpn->net, path_vpn->type, path_vpn->sub_type);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: start (path_vpn=%p)", __func__, path_vpn);
 
 	if (!path_vpn->net) {
@@ -2435,7 +2471,7 @@ void vpn_leak_to_vrf_withdraw(struct bgp_path_info *path_vpn)
 			return;
 		}
 #endif
-		if (debug)
+		if (1)
 			zlog_debug(
 				"%s: path_vpn->net unexpectedly NULL, no prefix, bailing",
 				__func__);
@@ -2448,7 +2484,7 @@ void vpn_leak_to_vrf_withdraw(struct bgp_path_info *path_vpn)
 	/* Loop over VRFs */
 	for (ALL_LIST_ELEMENTS(bm->bgp, mnode, mnnode, bgp)) {
 		if (!vpn_leak_from_vpn_active(bgp, afi, &debugmsg)) {
-			if (debug)
+			if (1)
 				zlog_debug("%s: from %s, skipping: %s",
 					   __func__, bgp->name_pretty,
 					   debugmsg);
@@ -2464,7 +2500,7 @@ void vpn_leak_to_vrf_withdraw(struct bgp_path_info *path_vpn)
 			continue;
 		}
 
-		if (debug)
+		if (1)
 			zlog_debug("%s: withdrawing from vrf %s", __func__,
 				   bgp->name_pretty);
 
@@ -2480,7 +2516,7 @@ void vpn_leak_to_vrf_withdraw(struct bgp_path_info *path_vpn)
 		}
 
 		if (bpi) {
-			if (debug)
+			if (1)
 				zlog_debug("%s: deleting bpi %p", __func__,
 					   bpi);
 			bgp_aggregate_decrement(bgp, p, bpi, afi, safi);
@@ -2498,7 +2534,7 @@ void vpn_leak_to_vrf_withdraw_all(struct bgp *to_bgp, afi_t afi)
 	safi_t safi = SAFI_UNICAST;
 	int debug = BGP_DEBUG(vpn, VPN_LEAK_TO_VRF);
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: entry", __func__);
 	/*
 	 * Walk vrf table, delete bpi with bgp_orig in a different vrf
@@ -2629,7 +2665,7 @@ static void vpn_policy_routemap_update(struct bgp *bgp, const char *rmap_name)
 			       bgp->vpn_policy[afi]
 				       .rmap_name[BGP_VPN_POLICY_DIR_TOVPN])) {
 
-			if (debug)
+			if (1)
 				zlog_debug(
 					"%s: rmap \"%s\" matches vrf-policy tovpn for as %d afi %s",
 					__func__, rmap_name, bgp->as,
@@ -2637,7 +2673,7 @@ static void vpn_policy_routemap_update(struct bgp *bgp, const char *rmap_name)
 
 			vpn_leak_prechange(BGP_VPN_POLICY_DIR_TOVPN, afi,
 					   bgp_get_default(), bgp);
-			if (debug)
+			if (1)
 				zlog_debug("%s: after vpn_leak_prechange",
 					   __func__);
 
@@ -2648,7 +2684,7 @@ static void vpn_policy_routemap_update(struct bgp *bgp, const char *rmap_name)
 			vpn_leak_postchange(BGP_VPN_POLICY_DIR_TOVPN, afi,
 					    bgp_get_default(), bgp);
 
-			if (debug)
+			if (1)
 				zlog_debug("%s: after vpn_leak_postchange",
 					   __func__);
 		}
@@ -2658,7 +2694,7 @@ static void vpn_policy_routemap_update(struct bgp *bgp, const char *rmap_name)
 				bgp->vpn_policy[afi]
 				.rmap_name[BGP_VPN_POLICY_DIR_FROMVPN]))  {
 
-			if (debug) {
+			if (1) {
 				zlog_debug("%s: rmap \"%s\" matches vrf-policy fromvpn for as %d afi %s",
 					__func__, rmap_name, bgp->as,
 					afi2str(afi));
@@ -2700,7 +2736,7 @@ void vpn_handle_router_id_update(struct bgp *bgp, bool withdraw,
 	 * should not replace a configured vpn RD/RT.
 	 */
 	if (!is_config) {
-		if (debug)
+		if (1)
 			zlog_debug("%s: skipping non explicit router-id change",
 				   __func__);
 		return;
@@ -2721,7 +2757,7 @@ void vpn_handle_router_id_update(struct bgp *bgp, bool withdraw,
 		if (withdraw) {
 			vpn_leak_prechange(BGP_VPN_POLICY_DIR_TOVPN,
 					   afi, bgp_get_default(), bgp);
-			if (debug)
+			if (1)
 				zlog_debug("%s: %s after to_vpn vpn_leak_prechange",
 					   __func__, export_name);
 
@@ -2784,7 +2820,7 @@ void vpn_handle_router_id_update(struct bgp *bgp, bool withdraw,
 			vpn_leak_postchange(BGP_VPN_POLICY_DIR_TOVPN,
 					    afi, bgp_get_default(),
 					    bgp);
-			if (debug)
+			if (1)
 				zlog_debug("%s: %s after to_vpn vpn_leak_postchange",
 					   __func__, export_name);
 		}
@@ -2797,7 +2833,7 @@ void vpn_policy_routemap_event(const char *rmap_name)
 	struct listnode *mnode, *mnnode;
 	struct bgp *bgp;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s: entry", __func__);
 
 	if (bm->bgp == NULL) /* may be called during cleanup */
@@ -2902,7 +2938,7 @@ void vrf_import_from_vrf(struct bgp *to_bgp, struct bgp *from_bgp,
 		to_bgp->vpn_policy[afi].rtlist[idir] = ecommunity_dup(ecom);
 	SET_FLAG(to_bgp->af_flags[afi][safi], BGP_CONFIG_VRF_TO_VRF_IMPORT);
 
-	if (debug) {
+	if (1) {
 		const char *from_name;
 		char *ecom1, *ecom2;
 
@@ -2971,7 +3007,7 @@ void vrf_unimport_from_vrf(struct bgp *to_bgp, struct bgp *from_bgp,
 	if (!vname)
 		return;
 
-	if (debug)
+	if (1)
 		zlog_debug("%s from %s to %s", __func__, tmp_name, export_name);
 
 	/* Remove "import_vrf" from our import list. */
@@ -3824,7 +3860,7 @@ void bgp_vpn_leak_unimport(struct bgp *from_bgp)
 			if (!is_vrf_leak_bind)
 				continue;
 
-			if (debug)
+			if (1)
 				zlog_debug("%s: unimport routes from %s to_bgp %s afi %s import vrfs count %u",
 					   __func__, from_bgp->name_pretty,
 					   to_bgp->name_pretty, afi2str(afi),
@@ -3919,7 +3955,7 @@ void bgp_vpn_leak_export(struct bgp *from_bgp)
 				if (strcmp(vname, export_name) != 0)
 					continue;
 
-				if (debug)
+				if (1)
 					zlog_debug("%s: found from_bgp %s in to_bgp %s import list, import routes.",
 					   __func__,
 					   export_name, to_bgp->name_pretty);

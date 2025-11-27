@@ -2272,6 +2272,7 @@ DEFUN(bgp_import_check_latency,
     }
     
     bgp->import_latency_cfg.enabled = true;
+	bgp_twamp_init(bgp);
     return CMD_SUCCESS;
 }
 
@@ -2286,6 +2287,7 @@ DEFUN(no_bgp_import_check_latency,
     VTY_DECLVAR_CONTEXT(bgp, bgp);
     
     bgp->import_latency_cfg.enabled = false;
+	bgp_twamp_cleanup();
     
     /* Reset to defaults */
     bgp->import_latency_cfg.probe_cycle_sec = 60;

@@ -9,6 +9,7 @@ noinst_PROGRAMS += bgpd/bgp_btoa
 
 vtysh_daemons += bgpd
 
+
 if SNMP
 module_LTLIBRARIES += bgpd/bgpd_snmp.la
 endif
@@ -77,6 +78,7 @@ bgpd_libbgp_a_SOURCES = \
 	bgpd/bgp_zebra.c \
 	bgpd/bgpd.c \
 	bgpd/bgp_trace.c \
+	bgpd/bgp_twamp.c \
 	# end
 
 if ENABLE_BGP_VNC

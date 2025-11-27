@@ -41,6 +41,7 @@
 #include "bgpd/bgp_keepalives.h"
 #include "bgpd/bgp_io.h"
 #include "bgpd/bgp_zebra.h"
+#include "bgpd/bgp_twamp.h"
 #include "bgpd/bgp_vty.h"
 
 DEFINE_HOOK(peer_backward_transition, (struct peer * peer), (peer));
@@ -1220,12 +1221,16 @@ void bgp_fsm_change_status(struct peer_connection *connection,
 	uint32_t peer_count;
 
 	peer_count = bgp->established_peers;
-
-	if (status == Established)
+	if (status == Established) {
 		bgp->established_peers++;
-	else if ((peer_established(connection)) && (status != Established))
-		bgp->established_peers--;
 
+		/* Trigger TWAMP peer collection when peer becomes established */
+		if (bgp->import_latency_cfg.enabled) {
+			fprintf(stderr, "*** Peer established, re-collecting for TWAMP\n"); fflush(stderr);
+			bgp_twamp_collect_nexthops(bgp);
+		}
+	} else if ((peer_established(connection)) && (status != Established))
+		bgp->established_peers--;
 	if (bgp_debug_neighbor_events(peer)) {
 		struct vrf *vrf = vrf_lookup_by_id(bgp->vrf_id);
 

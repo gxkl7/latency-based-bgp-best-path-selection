@@ -1,0 +1,261 @@
+#include "zebra.h"
+
+#include "bgpd/bgpd.h"
+#include "bgpd/bgp_table.h"
+#include "bgpd/bgp_route.h"
+#include "bgpd/bgp_attr.h"
+#include "log.h"
+#include "bgp_twamp_ipc.h"
+
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <errno.h>
+#include <string.h>
+
+/* Global shared memory pointer */
+static struct twamp_shm *shm = NULL;
+static int shm_fd = -1;
+
+/* Initialize shared memory */
+void bgp_twamp_init(struct bgp *bgp)
+{
+    pthread_mutexattr_t attr;
+    
+    if (!bgp->import_latency_cfg.enabled) {
+        zlog_info("BGP TWAMP: Not enabled, skipping initialization");
+        return;
+    }
+    
+    /* Check if already initialized */
+    if (shm != NULL) {
+        zlog_info("BGP TWAMP: Already initialized, collecting next-hops");
+        bgp_twamp_collect_nexthops(bgp);
+        return;
+    }
+    
+    /* Create/open shared memory */
+    shm_fd = shm_open(TWAMP_SHM_NAME, O_CREAT | O_RDWR, 0666);
+    if (shm_fd == -1) {
+        zlog_err("BGP TWAMP: Failed to create shared memory: %s", 
+                 strerror(errno));
+        return;
+    }
+    
+    /* Size it */
+    if (ftruncate(shm_fd, sizeof(struct twamp_shm)) == -1) {
+        zlog_err("BGP TWAMP: Failed to size shared memory: %s", 
+                 strerror(errno));
+        close(shm_fd);
+        shm_fd = -1;
+        return;
+    }
+    
+    /* Map it */
+    shm = mmap(NULL, sizeof(struct twamp_shm), 
+               PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    
+    if (shm == MAP_FAILED) {
+        zlog_err("BGP TWAMP: Failed to map shared memory: %s", 
+                 strerror(errno));
+        close(shm_fd);
+        shm_fd = -1;
+        shm = NULL;
+        return;
+    }
+    
+    /* Initialize mutex for cross-process synchronization */
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(&shm->lock, &attr);
+    pthread_mutexattr_destroy(&attr);
+    
+    shm->nh_count = 0;
+    shm->sequence = 0;
+    shm->padding = 0;
+    
+    zlog_info("BGP TWAMP: Shared memory initialized at %s", TWAMP_SHM_NAME);
+    
+    /* Collect existing next-hops */
+    bgp_twamp_collect_nexthops(bgp);
+}
+
+/* Add next-hop to monitoring list */
+void bgp_twamp_add_nexthop(struct in_addr *nh)
+{
+    int i;
+    
+    if (!shm) {
+        zlog_warn("BGP TWAMP: Shared memory not initialized");
+        return;
+    }
+    
+    pthread_mutex_lock(&shm->lock);
+    
+    /* Check if already exists */
+    for (i = 0; i < (int)shm->nh_count; i++) {
+        if (shm->nexthops[i].addr.s_addr == nh->s_addr) {
+            shm->nexthops[i].active = 1;
+            pthread_mutex_unlock(&shm->lock);
+            return;
+        }
+    }
+    
+    /* Add new entry */
+    if (shm->nh_count < MAX_NEXTHOPS) {
+        shm->nexthops[shm->nh_count].addr.s_addr = nh->s_addr;
+        shm->nexthops[shm->nh_count].active = 1;
+        shm->nexthops[shm->nh_count].measured = 0;
+        shm->nexthops[shm->nh_count].padding[0] = 0;
+        shm->nexthops[shm->nh_count].padding[1] = 0;
+        shm->nexthops[shm->nh_count].latency_ms = UINT32_MAX;  /* Max = not measured */
+        shm->nexthops[shm->nh_count].last_updated = 0;
+        shm->nh_count++;
+        shm->sequence++;  /* Signal change to TWAMP */
+        
+        char buf[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, nh, buf, sizeof(buf));
+        zlog_info("BGP TWAMP: Added next-hop %s for monitoring", buf);
+    } else {
+        zlog_warn("BGP TWAMP: Max next-hops (%d) reached, cannot add more", 
+                  MAX_NEXTHOPS);
+    }
+    
+    pthread_mutex_unlock(&shm->lock);
+}
+
+/* Remove next-hop from monitoring */
+void bgp_twamp_remove_nexthop(struct in_addr *nh)
+{
+    int i;
+    
+    if (!shm)
+        return;
+    
+    pthread_mutex_lock(&shm->lock);
+    
+    for (i = 0; i < (int)shm->nh_count; i++) {
+        if (shm->nexthops[i].addr.s_addr == nh->s_addr) {
+            shm->nexthops[i].active = 0;  /* Mark inactive */
+            shm->sequence++;
+            
+            char buf[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, nh, buf, sizeof(buf));
+            zlog_info("BGP TWAMP: Removed next-hop %s from monitoring", buf);
+            break;
+        }
+    }
+    
+    pthread_mutex_unlock(&shm->lock);
+}
+
+/* Get latency for a next-hop */
+uint32_t bgp_twamp_get_latency(struct in_addr *nh)
+{
+    int i;
+    uint32_t latency;
+    
+    if (!shm)
+        return UINT32_MAX;  /* No measurement available */
+    
+    pthread_mutex_lock(&shm->lock);
+    
+    for (i = 0; i < (int)shm->nh_count; i++) {
+        if (shm->nexthops[i].addr.s_addr == nh->s_addr && 
+            shm->nexthops[i].measured &&
+            shm->nexthops[i].active) {
+            latency = shm->nexthops[i].latency_ms;
+            pthread_mutex_unlock(&shm->lock);
+            return latency;
+        }
+    }
+    
+    pthread_mutex_unlock(&shm->lock);
+    return UINT32_MAX;  /* Not found or not measured */
+}
+
+/* Collect all next-hops from imported VPNv4 routes */
+void bgp_twamp_collect_nexthops(struct bgp *bgp)
+{
+    struct bgp_table *table;
+    struct bgp_dest *dest;
+    struct bgp_path_info *pi;
+    struct in_addr peer_ip;
+    int count = 0;
+    
+    if (!bgp || !bgp->import_latency_cfg.enabled) {
+        zlog_info("BGP TWAMP: Feature not enabled or BGP instance invalid");
+        return;
+    }
+    
+    if (!shm) {
+        zlog_warn("BGP TWAMP: Shared memory not initialized");
+        return;
+    }
+    
+    /* Get IPv4 unicast RIB */
+    table = bgp->rib[AFI_IP][SAFI_UNICAST];
+    if (!table) {
+        zlog_warn("BGP TWAMP: IPv4 unicast table not found");
+        return;
+    }
+    
+    zlog_info("BGP TWAMP: Starting peer IP collection from IPv4 unicast RIB");
+    
+    /* Iterate through all BGP routes using BGP-specific functions */
+    for (dest = bgp_table_top(table); dest; dest = bgp_route_next(dest)) {
+        
+        /* Get path info for this destination */
+        for (pi = bgp_dest_get_bgp_path_info(dest); pi; pi = pi->next) {
+            
+            /* Only interested in BGP routes */
+            if (pi->type != ZEBRA_ROUTE_BGP)
+                continue;
+            
+            /* Skip if no attributes */
+            if (!pi->peer)
+                continue;
+            
+            /* Extract nexthop IPv4 address */
+            if (pi->peer->connection && pi->peer->connection->su.sa.sa_family == AF_INET) {
+                peer_ip.s_addr = pi->peer->connection->su.sin.sin_addr.s_addr;
+                
+                char buf[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &peer_ip, buf, sizeof(buf));
+                zlog_info("BGP TWAMP: Found route from peer %s", buf);
+                
+                /* Add to shared memory */
+                bgp_twamp_add_nexthop(&peer_ip);
+                count++;
+            }
+        }
+    }
+    
+    zlog_info("BGP TWAMP: Collected %d peer IPs from IPv4 unicast RIB", count);
+}
+
+/* Cleanup shared memory */
+void bgp_twamp_cleanup(void)
+{
+    /* Check if not initialized */
+    if (!shm && shm_fd < 0) {
+        zlog_info("BGP TWAMP: Nothing to cleanup");
+        return;
+    }
+    
+    if (shm) {
+        pthread_mutex_destroy(&shm->lock);
+        munmap(shm, sizeof(struct twamp_shm));
+        shm = NULL;
+    }
+    
+    if (shm_fd >= 0) {
+        close(shm_fd);
+        shm_unlink(TWAMP_SHM_NAME);
+        shm_fd = -1;
+    }
+    
+    zlog_info("BGP TWAMP: Cleaned up shared memory");
+}

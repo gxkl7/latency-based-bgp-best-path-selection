@@ -73,6 +73,7 @@
 #include "bgpd/bgp_flowspec.h"
 #include "bgpd/bgp_flowspec_util.h"
 #include "bgpd/bgp_pbr.h"
+#include "bgpd/bgp_twamp.h"
 
 #include "bgpd/bgp_route_clippy.c"
 
@@ -857,6 +858,87 @@ int bgp_path_info_cmp(struct bgp *bgp, struct bgp_path_info *new,
 					pfx_buf, new_buf, exist_buf, new_mm_seq,
 					&new->attr->nexthop);
 			return 0;
+		}
+	}
+/* 0.5. Latency-based weight adjustment (before weight check) */
+	if (bgp->import_latency_cfg.enabled) {
+		fprintf(stderr, "*** TWAMP DEBUG: Weight adjustment called\n"); fflush(stderr);
+		/* Get ultimate peer for imported routes */
+		struct bgp_path_info *new_ultimate = bgp_get_imported_bpi_ultimate(new);
+		struct bgp_path_info *exist_ultimate = bgp_get_imported_bpi_ultimate(exist);
+		fprintf(stderr, "*** TWAMP: Got ultimate peers, new=%p exist=%p\n", (void*)new_ultimate, (void*)exist_ultimate); fflush(stderr);
+		/* Only apply to IBGP peers */
+		if (new_ultimate->peer && exist_ultimate->peer &&
+		    new_ultimate->peer->sort == BGP_PEER_IBGP && 
+		    exist_ultimate->peer->sort == BGP_PEER_IBGP) {
+			fprintf(stderr, "*** TWAMP: Inside IBGP check\n"); fflush(stderr);
+			
+			struct in_addr new_peer_ip, exist_peer_ip;
+			uint32_t new_latency = UINT32_MAX;
+			uint32_t exist_latency = UINT32_MAX;
+			
+			/* Get peer IPs */
+			if (new_ultimate->peer->connection && 
+			    new_ultimate->peer->connection->su.sa.sa_family == AF_INET) {
+				new_peer_ip.s_addr = new_ultimate->peer->connection->su.sin.sin_addr.s_addr;
+					{ char buf[INET_ADDRSTRLEN]; inet_ntop(AF_INET, &new_peer_ip, buf, sizeof(buf)); fprintf(stderr, "*** TWAMP: Looking up new peer IP: %s\n", buf); fflush(stderr); }
+				new_latency = bgp_twamp_get_latency(&new_peer_ip);
+					fprintf(stderr, "*** TWAMP: new_latency=%u\n", new_latency); fflush(stderr);
+			}
+			
+			if (exist_ultimate->peer->connection && 
+			    exist_ultimate->peer->connection->su.sa.sa_family == AF_INET) {
+				exist_peer_ip.s_addr = exist_ultimate->peer->connection->su.sin.sin_addr.s_addr;
+					{ char buf[INET_ADDRSTRLEN]; inet_ntop(AF_INET, &exist_peer_ip, buf, sizeof(buf)); fprintf(stderr, "*** TWAMP: Looking up exist peer IP: %s\n", buf); fflush(stderr); }
+				exist_latency = bgp_twamp_get_latency(&exist_peer_ip);
+					fprintf(stderr, "*** TWAMP: exist_latency=%u\n", exist_latency); fflush(stderr);
+			}
+			
+			/* Apply latency-based weight adjustment */
+			fprintf(stderr, "*** WEIGHT: new_lat=%u exist_lat=%u (UINT32_MAX=%u)\n", new_latency, exist_latency, UINT32_MAX); fflush(stderr);
+			if (new_latency != UINT32_MAX && exist_latency != UINT32_MAX) {
+				uint32_t latency_diff = (new_latency > exist_latency) ? 
+				                        (new_latency - exist_latency) : 
+				                        (exist_latency - new_latency);
+				
+				if (latency_diff <= bgp->import_latency_cfg.damping_threshold) {
+					fprintf(stderr, "*** WEIGHT: Within threshold, setting both to 32768\n"); fflush(stderr);
+					/* Both paths within threshold - set both to max/2 for ECMP */
+					newattr->weight = 32768;
+						fprintf(stderr, "*** TWAMP: SET newattr->weight=32768\n"); fflush(stderr);
+					existattr->weight = 32768;
+						fprintf(stderr, "*** TWAMP: SET existattr->weight=32768\n"); fflush(stderr);
+					if (debug)
+						zlog_debug("%s: Both paths set to weight 32768 (latency diff %ums <= threshold %ums, new=%ums, exist=%ums)",
+						           pfx_buf, latency_diff, 
+						           bgp->import_latency_cfg.damping_threshold,
+						           new_latency, exist_latency);
+				} else {
+					/* Latency difference exceeds threshold */
+					if (new_latency < exist_latency) {
+						/* New path has lower latency */
+						newattr->weight = 32768;
+						fprintf(stderr, "*** TWAMP: SET newattr->weight=32768\n"); fflush(stderr);
+						existattr->weight = 0;
+						if (debug)
+							zlog_debug("%s: %s weight=32768, %s weight=0 (latency %ums < %ums, diff %ums > threshold %ums)",
+							           pfx_buf, new_buf, exist_buf,
+							           new_latency, exist_latency, latency_diff,
+							           bgp->import_latency_cfg.damping_threshold);
+					} else {
+						/* Exist path has lower latency */
+						newattr->weight = 0;
+						existattr->weight = 32768;
+						fprintf(stderr, "*** TWAMP: SET existattr->weight=32768\n"); fflush(stderr);
+						if (debug)
+							zlog_debug("%s: %s weight=0, %s weight=32768 (latency %ums > %ums, diff %ums > threshold %ums)",
+							           pfx_buf, new_buf, exist_buf,
+							           new_latency, exist_latency, latency_diff,
+							           bgp->import_latency_cfg.damping_threshold);
+					}
+				}
+			}
+			/* If either peer unreachable, don't touch weights - use default BGP behavior */
 		}
 	}
 
@@ -10989,6 +11071,33 @@ void route_vty_out_detail(struct vty *vty, struct bgp *bgp, struct bgp_dest *bn,
 				       json_last_update);
 	} else
 		vty_out(vty, "      Last update: %s", ctime_r(&tbuf, timebuf));
+	/* Display TWAMP latency if feature is enabled and peer is IBGP */
+	if (bgp->import_latency_cfg.enabled) {
+		/* Get ultimate peer for imported routes */
+		struct bgp_path_info *path_ultimate = bgp_get_imported_bpi_ultimate(path);
+		
+		if (path_ultimate->peer && path_ultimate->peer->sort == BGP_PEER_IBGP &&
+		    path_ultimate->peer->connection && 
+		    path_ultimate->peer->connection->su.sa.sa_family == AF_INET) {
+			struct in_addr peer_ip;
+			peer_ip.s_addr = path_ultimate->peer->connection->su.sin.sin_addr.s_addr;
+			uint32_t latency = bgp_twamp_get_latency(&peer_ip);
+			
+			if (json_paths) {
+				if (latency != UINT32_MAX) {
+					json_object_int_add(json_path, "twampLatencyMs", latency);
+				} else {
+					json_object_string_add(json_path, "twampLatency", "unreachable");
+				}
+			} else {
+				if (latency != UINT32_MAX) {
+					vty_out(vty, "      TWAMP Latency: %u ms\n", latency);
+				} else {
+					vty_out(vty, "      TWAMP Latency: unreachable\n");
+				}
+			}
+		}
+	}
 
 	/* Line 10 display PMSI tunnel attribute, if present */
 	if (attr->flag & ATTR_FLAG_BIT(BGP_ATTR_PMSI_TUNNEL)) {
